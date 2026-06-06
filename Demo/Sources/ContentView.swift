@@ -7,6 +7,7 @@
 
 import SwiftUI
 import ReelKit
+import ARKit
 import RealityKit
 
 struct ContentView: View {
@@ -62,8 +63,13 @@ struct ContentView: View {
         }
         .tint(.white)
         .onAppear { perf.start(); spin = true }
-        .onChange(of: mode) { _, newMode in syncCamera(for: newMode) }
-        .onChange(of: fps) { _, _ in if mode == .camera { syncCamera(for: .camera) } }
+        .onChange(of: mode) { oldMode, newMode in
+            teardown(oldMode)
+            setup(newMode)
+        }
+        .onChange(of: fps) { _, _ in
+            if mode == .camera { teardown(.camera); setup(.camera) }
+        }
         .sheet(isPresented: $showGallery) { GalleryView() }
     }
 
@@ -141,19 +147,29 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Camera lifecycle
+    // MARK: - Mode lifecycle (release the camera before the next mode grabs it)
 
     @MainActor
-    private func syncCamera(for newMode: Mode) {
-        if newMode == .camera {
-            cameraSource?.stopRunning()
-            let source = CameraFrameSource(position: .back, fps: fps.camera)
-            source.startRunning()
-            cameraSource = source
-        } else {
+    private func teardown(_ oldMode: Mode) {
+        switch oldMode {
+        case .arkit:
+            arView?.renderCallbacks.postProcess = nil
+            arView?.session.pause()
+            arView = nil
+        case .camera:
             cameraSource?.stopRunning()
             cameraSource = nil
+        case .screen:
+            break
         }
+    }
+
+    @MainActor
+    private func setup(_ newMode: Mode) {
+        guard newMode == .camera else { return }
+        let source = CameraFrameSource(position: .back, fps: fps.camera)
+        source.startRunning()
+        cameraSource = source
     }
 
     // MARK: - Recording
@@ -187,12 +203,13 @@ struct ContentView: View {
         switch mode {
         case .screen:
             guard let window = keyWindow else { return nil }
-            return UIViewFrameSource(window, fps: fps.displayLink, maxDimension: 1080)
+            return UIViewFrameSource(window, fps: fps.displayLink, maxDimension: 720)
         case .arkit:
             if arIncludeUI {
-                // Cap to 1080p — drawHierarchy cost scales with output pixels.
+                // Cap to 720p — drawHierarchy runs on the main thread and its cost
+                // scales with output pixels, so resolution is the main lever.
                 guard let window = keyWindow else { return nil }
-                return UIViewFrameSource(window, fps: fps.displayLink, afterScreenUpdates: false, maxDimension: 1080)
+                return UIViewFrameSource(window, fps: fps.displayLink, afterScreenUpdates: false, maxDimension: 720)
             } else {
                 guard let arView else { return nil }
                 return ARViewFrameSource(arView)   // GPU; frame rate follows the AR session

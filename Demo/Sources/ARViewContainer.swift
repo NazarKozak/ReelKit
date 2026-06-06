@@ -38,4 +38,11 @@ struct ARViewContainer: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: ARView, context: Context) {}
+
+    // Release the camera/session when SwiftUI removes the view, so the next mode
+    // (e.g. the plain camera) can grab the camera without conflicting.
+    static func dismantleUIView(_ uiView: ARView, coordinator: Void) {
+        uiView.renderCallbacks.postProcess = nil
+        uiView.session.pause()
+    }
 }

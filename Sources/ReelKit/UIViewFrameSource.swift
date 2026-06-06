@@ -13,6 +13,10 @@
 //  apps / system UI) — which is exactly what an in-app recorder wants, and is
 //  why no permission prompt is required.
 //
+//  Cost note: `drawHierarchy` rasterizes the hierarchy on the CPU each frame, so
+//  cost scales with the output pixel count. Use `maxDimension` to cap resolution
+//  (e.g. 1280) on large screens to cut CPU substantially.
+//
 
 #if os(iOS)
 import UIKit
@@ -24,7 +28,6 @@ public final class UIViewFrameSource: NSObject, FrameSource, @unchecked Sendable
     public let nativeSize: CGSize
 
     private weak var view: UIView?
-    private let scale: CGFloat
     private let fps: Int
     private let afterScreenUpdates: Bool
     private var displayLink: CADisplayLink?
@@ -39,14 +42,20 @@ public final class UIViewFrameSource: NSObject, FrameSource, @unchecked Sendable
     ///   - afterScreenUpdates: pass `true` to capture Metal-backed content such as
     ///     an `ARView`/`ARSCNView` (camera + 3D overlays) — slower but complete.
     ///     Leave `false` (default) for plain UIKit/SwiftUI screen capture — fastest.
+    ///   - maxDimension: optional cap on the longest output side (points × scale).
+    ///     Downscales large screens to reduce CPU/encode cost. `nil` = no cap.
     @MainActor
-    public init(_ view: UIView, scale: CGFloat = 2.0, fps: Int = 30, afterScreenUpdates: Bool = false) {
+    public init(
+        _ view: UIView,
+        scale: CGFloat = 2.0,
+        fps: Int = 30,
+        afterScreenUpdates: Bool = false,
+        maxDimension: CGFloat? = nil
+    ) {
         self.view = view
-        self.scale = scale
         self.fps = fps
         self.afterScreenUpdates = afterScreenUpdates
-        self.nativeSize = CGSize(width: view.bounds.width * scale,
-                                 height: view.bounds.height * scale)
+        self.nativeSize = Self.outputSize(bounds: view.bounds.size, scale: scale, maxDimension: maxDimension)
         super.init()
     }
 
@@ -85,11 +94,27 @@ public final class UIViewFrameSource: NSObject, FrameSource, @unchecked Sendable
         let elapsed = link.timestamp - (startTimestamp ?? link.timestamp)
         let time = CMTime(seconds: elapsed, preferredTimescale: 600)
 
-        guard let buffer = Self.render(view: view, scale: scale, size: nativeSize, pool: pool, afterScreenUpdates: afterScreenUpdates) else { return }
+        guard let buffer = Self.render(view: view, size: nativeSize, pool: pool, afterScreenUpdates: afterScreenUpdates) else { return }
         continuation.yield(TimedFrame(pixelBuffer: buffer, time: time))
     }
 
-    // MARK: - Rendering
+    // MARK: - Sizing & rendering
+
+    /// Output size = bounds × scale, optionally capped to `maxDimension` on the
+    /// longest side, rounded to even dimensions (H.264 requirement).
+    private static func outputSize(bounds: CGSize, scale: CGFloat, maxDimension: CGFloat?) -> CGSize {
+        var w = bounds.width * scale
+        var h = bounds.height * scale
+        if let maxDimension {
+            let longest = max(w, h)
+            if longest > maxDimension {
+                let f = maxDimension / longest
+                w *= f
+                h *= f
+            }
+        }
+        return CGSize(width: (w / 2).rounded(.down) * 2, height: (h / 2).rounded(.down) * 2)
+    }
 
     private static func makePool(size: CGSize) -> CVPixelBufferPool? {
         let attrs: [String: Any] = [
@@ -106,10 +131,13 @@ public final class UIViewFrameSource: NSObject, FrameSource, @unchecked Sendable
 
     /// Single-pass render: `drawHierarchy` writes **directly** into the pixel
     /// buffer's backing `CGContext` — no intermediate `UIImage`/`CGImage`
-    /// allocation per frame, and the buffer is recycled from a pool. This is the
-    /// optimal path: one render, zero per-frame heap churn.
+    /// allocation per frame, and the buffer is recycled from a pool. One render,
+    /// zero per-frame heap churn.
     @MainActor
-    private static func render(view: UIView, scale: CGFloat, size: CGSize, pool: CVPixelBufferPool, afterScreenUpdates: Bool) -> CVPixelBuffer? {
+    private static func render(view: UIView, size: CGSize, pool: CVPixelBufferPool, afterScreenUpdates: Bool) -> CVPixelBuffer? {
+        let bounds = view.bounds
+        guard bounds.width > 0, bounds.height > 0 else { return nil }
+
         var pixelBuffer: CVPixelBuffer?
         guard CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &pixelBuffer) == kCVReturnSuccess,
               let buffer = pixelBuffer else { return nil }
@@ -127,14 +155,14 @@ public final class UIViewFrameSource: NSObject, FrameSource, @unchecked Sendable
             bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
         ) else { return nil }
 
-        // Map UIKit's top-left coordinate space onto the bottom-left CG context,
-        // applying the render scale in the same transform.
+        // Map UIKit's top-left point space onto the bottom-left CG context,
+        // scaling bounds → output size (aspect preserved) and flipping vertically.
         context.translateBy(x: 0, y: size.height)
-        context.scaleBy(x: scale, y: -scale)
+        context.scaleBy(x: size.width / bounds.width, y: -(size.height / bounds.height))
 
         UIGraphicsPushContext(context)
         // No-permission capture: render only the app's own view hierarchy.
-        _ = view.drawHierarchy(in: view.bounds, afterScreenUpdates: afterScreenUpdates)
+        _ = view.drawHierarchy(in: bounds, afterScreenUpdates: afterScreenUpdates)
         UIGraphicsPopContext()
 
         return buffer

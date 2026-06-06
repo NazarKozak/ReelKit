@@ -3,6 +3,18 @@
 All notable changes to ReelKit are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow SemVer.
 
+## [Unreleased]
+
+### Added
+- `UIViewFrameSource(maxDimension:)` — caps the longest output side and
+  downscales large screens, cutting `drawHierarchy` CPU/encode cost.
+- Demo: ARKit recording mode (RealityKit `ARView` via `RealityKitFrameSource`),
+  a Share button (`ShareLink`) to export the recording, and a microphone toggle.
+
+### Changed
+- Demo records **without microphone by default** (no permission prompt); enable
+  audio explicitly via the toggle. The SDK already defaulted to `audio: .none`.
+
 ## [0.1.0] - 2026-06-05
 
 Initial public release.

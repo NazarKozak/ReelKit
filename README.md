@@ -90,9 +90,12 @@ Text(perf.summary)   // "60 fps · 8% cpu · 124 MB"
 
 ## Demo
 
-`Demo/` contains a reference SwiftUI app (open in Xcode as an App target depending on this
-package). It records the screen with a live FPS/CPU/MEM overlay. Not built by `swift build`
-(iOS-only UI).
+Open **`Demo/ReelKitDemo.xcodeproj`** in Xcode, pick an iOS Simulator (or your device), and run.
+It records the screen with a live FPS/CPU/MEM overlay so you can watch the capture overhead.
+
+The project depends on the local package and uses Xcode's file-system-synchronized groups —
+drop any `.swift` file into `Demo/Sources/` and it's picked up automatically, no project edits.
+(The demo isn't built by `swift build`, which only compiles the library.)
 
 ## Roadmap
 

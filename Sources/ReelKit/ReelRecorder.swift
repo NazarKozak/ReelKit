@@ -54,7 +54,8 @@ public actor ReelRecorder {
         #if os(iOS)
         if audioMode == .microphone {
             let capture = try AudioCapture { [weak self] sample in
-                Task { await self?.ingestAudio(sample) }
+                let box = UncheckedSendableBox(value: sample)
+                Task { await self?.ingestAudio(box) }
             }
             self.audioCapture = capture
             try capture.start()
@@ -102,9 +103,18 @@ public actor ReelRecorder {
     }
 
     #if os(iOS)
-    private func ingestAudio(_ sample: CMSampleBuffer) {
+    private func ingestAudio(_ box: UncheckedSendableBox<CMSampleBuffer>) {
         guard isRecording, let writer else { return }
-        writer.appendAudio(sample)
+        writer.appendAudio(box.value)
     }
     #endif
 }
+
+#if os(iOS)
+/// Carries a non-`Sendable` value across an isolation boundary. The audio sample
+/// is produced, boxed, and consumed serially (capture queue → recorder actor),
+/// so the transfer is race-free.
+struct UncheckedSendableBox<Value>: @unchecked Sendable {
+    let value: Value
+}
+#endif

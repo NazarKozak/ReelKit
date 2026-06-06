@@ -39,9 +39,10 @@ public final class UIViewFrameSource: NSObject, FrameSource, @unchecked Sendable
     ///   - view: the view to capture. Pass the key window to record the whole screen of your app.
     ///   - scale: render scale (1 = points, 2 = retina). Higher = sharper, heavier.
     ///   - fps: capture cadence.
-    ///   - afterScreenUpdates: pass `true` to capture Metal-backed content such as
-    ///     an `ARView`/`ARSCNView` (camera + 3D overlays) — slower but complete.
-    ///     Leave `false` (default) for plain UIKit/SwiftUI screen capture — fastest.
+    ///   - afterScreenUpdates: `false` (default) snapshots already-rendered content
+    ///     — fast, no frame loss, and usually still captures presented Metal/AR
+    ///     layers. Use `true` only if `false` yields stale/blank frames; it forces a
+    ///     synchronous re-render and is much slower (can halve the frame rate).
     ///   - maxDimension: optional cap on the longest output side (points × scale).
     ///     Downscales large screens to reduce CPU/encode cost. `nil` = no cap.
     @MainActor

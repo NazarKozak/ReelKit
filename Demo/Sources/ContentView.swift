@@ -18,8 +18,8 @@ struct ContentView: View {
 
     @State private var mode: Mode = .screen
     @State private var audioEnabled = false   // default OFF → no mic permission prompt
-    @State private var arIncludeUI = false    // AR default: fast GPU camera+3D (ARViewFrameSource).
-                                              // ON = also include SwiftUI UI (screen composite, heavy).
+    @State private var arIncludeUI = false    // AR default: GPU camera+3D (ARViewFrameSource).
+                                              // ON = also include SwiftUI UI (screen snapshot, fast).
     @State private var perf = ReelPerformanceMonitor()
     @State private var recorder: ReelRecorder?
     @State private var isRecording = false
@@ -71,7 +71,7 @@ struct ContentView: View {
 
                 if mode == .arkit {
                     Toggle(isOn: $arIncludeUI) {
-                        Label("+ UI (heavy)", systemImage: "square.stack.3d.up.fill")
+                        Label("+ UI", systemImage: "square.stack.3d.up.fill")
                     }
                     .toggleStyle(.button)
                     .tint(.white)
@@ -142,11 +142,11 @@ struct ContentView: View {
             return UIViewFrameSource(window, fps: 30, maxDimension: 1280)
         case .arkit:
             if arIncludeUI {
-                // Camera + 3D + SwiftUI overlays, as on screen. Heavy:
-                // drawHierarchy(afterScreenUpdates:) rasterizes the whole window on
-                // the CPU each frame. Lower res/fps to keep it usable.
+                // Camera + 3D + SwiftUI overlays, as on screen. afterScreenUpdates:
+                // false snapshots already-rendered content — fast, no frame loss
+                // (matches the Sidequest recorder).
                 guard let window = keyWindow else { return nil }
-                return UIViewFrameSource(window, fps: 24, afterScreenUpdates: true, maxDimension: 1080)
+                return UIViewFrameSource(window, fps: 30, afterScreenUpdates: false)
             } else {
                 // Fast GPU path: camera + RealityKit 3D via postProcess. Smooth,
                 // already in the view's orientation. No SwiftUI overlays.

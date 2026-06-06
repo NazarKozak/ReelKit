@@ -187,11 +187,12 @@ struct ContentView: View {
         switch mode {
         case .screen:
             guard let window = keyWindow else { return nil }
-            return UIViewFrameSource(window, fps: fps.displayLink, maxDimension: 1280)
+            return UIViewFrameSource(window, fps: fps.displayLink, maxDimension: 1080)
         case .arkit:
             if arIncludeUI {
+                // Cap to 1080p — drawHierarchy cost scales with output pixels.
                 guard let window = keyWindow else { return nil }
-                return UIViewFrameSource(window, fps: fps.displayLink, afterScreenUpdates: false)
+                return UIViewFrameSource(window, fps: fps.displayLink, afterScreenUpdates: false, maxDimension: 1080)
             } else {
                 guard let arView else { return nil }
                 return ARViewFrameSource(arView)   // GPU; frame rate follows the AR session

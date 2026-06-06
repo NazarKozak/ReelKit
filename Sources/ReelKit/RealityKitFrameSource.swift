@@ -14,6 +14,26 @@ import ARKit
 import RealityKit
 import CoreMedia
 import CoreVideo
+import ImageIO
+
+/// Target orientation for recorded AR video. The ARKit camera buffer is always
+/// delivered in the sensor's landscape orientation, so it must be rotated to
+/// match how the device is held.
+public enum VideoOrientation: Sendable {
+    case portrait
+    case portraitUpsideDown
+    case landscapeLeft
+    case landscapeRight
+
+    var cg: CGImagePropertyOrientation {
+        switch self {
+        case .portrait: .right
+        case .portraitUpsideDown: .left
+        case .landscapeRight: .up
+        case .landscapeLeft: .down
+        }
+    }
+}
 
 /// Produces frames from an active RealityKit `ARView` session.
 ///
@@ -32,22 +52,27 @@ public final class RealityKitFrameSource: NSObject, FrameSource, ARSessionDelega
     private let session: ARSession
     private let converter = FrameConverter()
     private let overlay: (@Sendable () -> CGImage?)?
+    private let orientation: CGImagePropertyOrientation
     private var continuation: AsyncStream<TimedFrame>.Continuation?
     private var previousDelegate: ARSessionDelegate?
 
     /// - Parameters:
     ///   - arView: the live RealityKit view to record.
-    ///   - size: output video size.
+    ///   - orientation: how to rotate the always-landscape camera buffer. Defaults
+    ///     to `.portrait`. If the result is upside down, use `.portraitUpsideDown`.
+    ///   - size: output video size (defaults to portrait 1080×1920).
     ///   - overlay: optional per-frame 2D overlay (already in output space),
     ///     e.g. a pre-rendered HUD. Called on the AR delegate queue.
     @MainActor
     public init(
         _ arView: ARView,
+        orientation: VideoOrientation = .portrait,
         size: CGSize = CGSize(width: 1080, height: 1920),
         overlay: (@Sendable () -> CGImage?)? = nil
     ) {
         self.arView = arView
         self.session = arView.session
+        self.orientation = orientation.cg
         self.nativeSize = size
         self.overlay = overlay
         super.init()
@@ -83,7 +108,7 @@ public final class RealityKitFrameSource: NSObject, FrameSource, ARSessionDelega
         previousDelegate?.session?(session, didUpdate: frame)
         guard let continuation else { return }
         let time = CMTime(seconds: frame.timestamp, preferredTimescale: 600)
-        guard let buffer = converter.bgra(from: frame.capturedImage, size: nativeSize, overlay: overlay?()) else { return }
+        guard let buffer = converter.bgra(from: frame.capturedImage, size: nativeSize, orientation: orientation, overlay: overlay?()) else { return }
         continuation.yield(TimedFrame(pixelBuffer: buffer, time: time))
     }
 }

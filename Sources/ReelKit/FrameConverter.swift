@@ -30,8 +30,14 @@ final class FrameConverter: @unchecked Sendable {
     }
 
     /// Renders `source` (any CoreImage-readable format) into a pooled BGRA buffer
-    /// scaled to `size`, compositing `overlay` (already in the output space) on top.
-    func bgra(from source: CVPixelBuffer, size: CGSize, overlay: CGImage? = nil) -> CVPixelBuffer? {
+    /// scaled to `size`, applying `orientation` (e.g. to rotate the always-landscape
+    /// ARKit camera buffer to portrait) and compositing `overlay` on top.
+    func bgra(
+        from source: CVPixelBuffer,
+        size: CGSize,
+        orientation: CGImagePropertyOrientation = .up,
+        overlay: CGImage? = nil
+    ) -> CVPixelBuffer? {
         guard size.width > 0, size.height > 0 else { return nil }
         ensurePool(size: size)
         guard let pool else { return nil }
@@ -41,6 +47,9 @@ final class FrameConverter: @unchecked Sendable {
               let dst = out else { return nil }
 
         var image = CIImage(cvPixelBuffer: source)
+        if orientation != .up {
+            image = image.oriented(orientation)
+        }
         let extent = image.extent
         if extent.width > 0, extent.height > 0 {
             let sx = size.width / extent.width

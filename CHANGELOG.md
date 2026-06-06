@@ -8,12 +8,23 @@ All notable changes to ReelKit are documented here. Format follows
 ### Added
 - `UIViewFrameSource(maxDimension:)` — caps the longest output side and
   downscales large screens, cutting `drawHierarchy` CPU/encode cost.
-- Demo: ARKit recording mode (RealityKit `ARView` via `RealityKitFrameSource`),
-  a Share button (`ShareLink`) to export the recording, and a microphone toggle.
+- `RealityKitFrameSource(orientation:)` + `VideoOrientation` — rotates the
+  always-landscape ARKit camera buffer to the correct device orientation
+  (defaults to `.portrait`).
+- Demo: ARKit recording mode, a Share button (`ShareLink`) to export the
+  recording, a microphone toggle, and an "UI & 3D" toggle that records
+  camera + RealityKit content + overlays (screen composite) vs camera-only.
+
+### Fixed
+- AR recordings were always written in the sensor's landscape orientation
+  regardless of how the device was held — now rotated per `orientation`.
 
 ### Changed
 - Demo records **without microphone by default** (no permission prompt); enable
   audio explicitly via the toggle. The SDK already defaulted to `audio: .none`.
+- To capture an AR scene **with** the 3D content and UI, use
+  `UIViewFrameSource(window, afterScreenUpdates: true)`; `RealityKitFrameSource`
+  records the camera feed only.
 
 ## [0.1.0] - 2026-06-05
 

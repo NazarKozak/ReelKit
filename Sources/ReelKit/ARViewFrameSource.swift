@@ -15,8 +15,10 @@
 import ARKit
 import RealityKit
 import Metal
+import MetalKit
 import CoreVideo
 import CoreMedia
+import CoreGraphics
 import QuartzCore
 
 /// Records a RealityKit `ARView` (camera + 3D content) at GPU speed.
@@ -32,11 +34,19 @@ public final class ARViewFrameSource: NSObject, FrameSource, @unchecked Sendable
     private var continuation: AsyncStream<TimedFrame>.Continuation?
 
     private var device: MTLDevice?
-    private var pipeline: MTLRenderPipelineState?
+    private var pipeline: MTLRenderPipelineState?       // opaque passthrough
+    private var blendPipeline: MTLRenderPipelineState?  // overlay, alpha-blended
     private var sampler: MTLSamplerState?
     private var textureCache: CVMetalTextureCache?
     private var pool: CVPixelBufferPool?
     private var startTime: CFTimeInterval?
+
+    // UI overlay composited on the GPU (no drawHierarchy). Updated from any thread.
+    private var textureLoader: MTKTextureLoader?
+    private let overlayLock = NSLock()
+    private var pendingOverlay: CGImage?
+    private var overlayImageRef: CGImage?
+    private var overlayTexture: MTLTexture?
 
     /// - Parameters:
     ///   - arView: the live RealityKit view to record.
@@ -61,6 +71,17 @@ public final class ARViewFrameSource: NSObject, FrameSource, @unchecked Sendable
         }
         self.nativeSize = CGSize(width: (w / 2).rounded(.down) * 2, height: (h / 2).rounded(.down) * 2)
         super.init()
+    }
+
+    /// Sets the UI overlay composited over the recorded AR frame, on the GPU.
+    ///
+    /// Render your HUD/controls to a `CGImage` (e.g. SwiftUI `ImageRenderer`) and
+    /// call this whenever it changes — not every frame. The overlay is alpha-blended
+    /// over the camera+3D at full frame rate, with no `drawHierarchy`.
+    public func setOverlay(_ image: CGImage?) {
+        overlayLock.lock()
+        pendingOverlay = image
+        overlayLock.unlock()
     }
 
     public func frames() -> AsyncStream<TimedFrame> {
@@ -120,13 +141,29 @@ public final class ARViewFrameSource: NSObject, FrameSource, @unchecked Sendable
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         enc.endEncoding()
 
+        // Pass 2: alpha-blend the UI overlay over the AR frame (if any).
+        if let blendPipeline, let overlay = currentOverlayTexture(device: context.device) {
+            let overlayPass = MTLRenderPassDescriptor()
+            overlayPass.colorAttachments[0].texture = dst
+            overlayPass.colorAttachments[0].loadAction = .load   // keep the AR frame
+            overlayPass.colorAttachments[0].storeAction = .store
+            if let enc2 = context.commandBuffer.makeRenderCommandEncoder(descriptor: overlayPass) {
+                enc2.setRenderPipelineState(blendPipeline)
+                enc2.setFragmentTexture(overlay, index: 0)
+                enc2.setFragmentSamplerState(sampler, index: 0)
+                enc2.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                enc2.endEncoding()
+            }
+        }
+
         let now = CACurrentMediaTime()
         if startTime == nil { startTime = now }
         let time = CMTime(seconds: now - (startTime ?? now), preferredTimescale: 600)
 
+        // Keep the texture (and its backing buffer) alive until the GPU is done.
+        let box = UncheckedSendableBox(value: (pixelBuffer, cvTexture))
         context.commandBuffer.addCompletedHandler { _ in
-            _ = cvTexture // keep the texture (and its buffer) alive until the GPU is done
-            continuation.yield(TimedFrame(pixelBuffer: pixelBuffer, time: time))
+            continuation.yield(TimedFrame(pixelBuffer: box.value.0, time: time))
         }
     }
 
@@ -160,11 +197,31 @@ public final class ARViewFrameSource: NSObject, FrameSource, @unchecked Sendable
         }
         """
         guard let library = try? device.makeLibrary(source: source, options: nil) else { return }
+        let vtx = library.makeFunction(name: "rk_vtx")
+        let frag = library.makeFunction(name: "rk_frag")
+
         let pd = MTLRenderPipelineDescriptor()
-        pd.vertexFunction = library.makeFunction(name: "rk_vtx")
-        pd.fragmentFunction = library.makeFunction(name: "rk_frag")
+        pd.vertexFunction = vtx
+        pd.fragmentFunction = frag
         pd.colorAttachments[0].pixelFormat = .bgra8Unorm
         pipeline = try? device.makeRenderPipelineState(descriptor: pd)
+
+        // Same shader, premultiplied-alpha blending, for the overlay pass.
+        let bd = MTLRenderPipelineDescriptor()
+        bd.vertexFunction = vtx
+        bd.fragmentFunction = frag
+        let attachment = bd.colorAttachments[0]!
+        attachment.pixelFormat = .bgra8Unorm
+        attachment.isBlendingEnabled = true
+        attachment.rgbBlendOperation = .add
+        attachment.alphaBlendOperation = .add
+        attachment.sourceRGBBlendFactor = .one               // CGImage is premultiplied
+        attachment.sourceAlphaBlendFactor = .one
+        attachment.destinationRGBBlendFactor = .oneMinusSourceAlpha
+        attachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
+        blendPipeline = try? device.makeRenderPipelineState(descriptor: bd)
+
+        textureLoader = MTKTextureLoader(device: device)
 
         let attrs: [String: Any] = [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
@@ -176,6 +233,26 @@ public final class ARViewFrameSource: NSObject, FrameSource, @unchecked Sendable
         var created: CVPixelBufferPool?
         CVPixelBufferPoolCreate(kCFAllocatorDefault, nil, attrs as CFDictionary, &created)
         pool = created
+    }
+
+    /// The overlay texture for this frame, re-uploaded only when the source CGImage changed.
+    private func currentOverlayTexture(device: MTLDevice) -> MTLTexture? {
+        overlayLock.lock()
+        let image = pendingOverlay
+        overlayLock.unlock()
+
+        if image !== overlayImageRef {
+            overlayImageRef = image
+            if let image, let loader = textureLoader {
+                overlayTexture = try? loader.newTexture(cgImage: image, options: [
+                    .SRGB: false,
+                    .textureUsage: NSNumber(value: MTLTextureUsage.shaderRead.rawValue)
+                ])
+            } else {
+                overlayTexture = nil
+            }
+        }
+        return overlayTexture
     }
 }
 #endif

@@ -39,8 +39,13 @@ struct ContentView: View {
     @State private var savedURL: URL?
     @State private var arView: ARView?
     @State private var cameraSource: CameraFrameSource?
+    @State private var arOverlaySource: ARViewFrameSource?
+    @State private var recordStart = Date()
     @State private var showGallery = false
     @State private var spin = false
+
+    // Drives GPU overlay refreshes (the HUD changes slowly, so a few times/sec is plenty).
+    private let overlayTick = Timer.publish(every: 0.2, on: .main, in: .common).autoconnect()
 
     var body: some View {
         ZStack {
@@ -70,6 +75,7 @@ struct ContentView: View {
         .onChange(of: fps) { _, _ in
             if mode == .camera { teardown(.camera); setup(.camera) }
         }
+        .onReceive(overlayTick) { _ in updateOverlayIfNeeded() }
         .sheet(isPresented: $showGallery) { GalleryView() }
     }
 
@@ -179,6 +185,8 @@ struct ContentView: View {
         if isRecording {
             guard let recorder else { return }
             isRecording = false
+            arOverlaySource?.setOverlay(nil)
+            arOverlaySource = nil
             if let tmp = try? await recorder.stop() {
                 savedURL = RecordingStore.save(tmp)
             }
@@ -191,11 +199,23 @@ struct ContentView: View {
         self.recorder = recorder
         do {
             savedURL = nil
+            recordStart = Date()
             try await recorder.start()
             isRecording = true
         } catch {
             self.recorder = nil
         }
+    }
+
+    /// Renders the HUD to a CGImage and hands it to the AR source for GPU compositing.
+    @MainActor
+    private func updateOverlayIfNeeded() {
+        guard isRecording, mode == .arkit, arIncludeUI, let arOverlaySource else { return }
+        let size = UIScreen.main.bounds.size
+        let renderer = ImageRenderer(content: OverlayHUD(elapsed: Date().timeIntervalSince(recordStart), size: size))
+        renderer.scale = UIScreen.main.scale
+        renderer.isOpaque = false
+        arOverlaySource.setOverlay(renderer.cgImage)
     }
 
     @MainActor
@@ -205,15 +225,13 @@ struct ContentView: View {
             guard let window = keyWindow else { return nil }
             return UIViewFrameSource(window, fps: fps.displayLink, maxDimension: 1080)
         case .arkit:
-            if arIncludeUI {
-                // 1080p. drawHierarchy runs on the main thread; resolution is the
-                // main lever here. For full-rate AR+UI use GPU overlay compositing.
-                guard let window = keyWindow else { return nil }
-                return UIViewFrameSource(window, fps: fps.displayLink, afterScreenUpdates: false, maxDimension: 1080)
-            } else {
-                guard let arView else { return nil }
-                return ARViewFrameSource(arView)   // GPU; frame rate follows the AR session
-            }
+            // GPU path: camera + RealityKit 3D via postProcess. When "+ UI" is on we
+            // also composite a HUD overlay on the GPU (no drawHierarchy) — see
+            // updateOverlayIfNeeded(). Either way it runs at the AR session frame rate.
+            guard let arView else { return nil }
+            let source = ARViewFrameSource(arView)
+            arOverlaySource = source
+            return source
         case .camera:
             return cameraSource
         }
@@ -239,6 +257,33 @@ struct ContentView: View {
                         .animation(.linear(duration: Double(i + 4)).repeatForever(autoreverses: false), value: spin)
                 }
             }
+    }
+}
+
+/// The HUD that gets GPU-composited onto AR recordings (rendered to a CGImage).
+private struct OverlayHUD: View {
+    let elapsed: TimeInterval
+    let size: CGSize
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            Color.clear
+            HStack(spacing: 8) {
+                Image(systemName: "record.circle.fill").foregroundStyle(.red)
+                Text("REC \(timeString)")
+                    .font(.system(.headline, design: .monospaced).weight(.bold))
+                    .foregroundStyle(.white)
+            }
+            .padding(.horizontal, 16).padding(.vertical, 10)
+            .background(.black.opacity(0.45), in: Capsule())
+            .padding(.top, 60).padding(.leading, 20)
+        }
+        .frame(width: size.width, height: size.height)
+    }
+
+    private var timeString: String {
+        let total = Int(elapsed)
+        return String(format: "%02d:%02d", total / 60, total % 60)
     }
 }
 

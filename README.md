@@ -161,7 +161,8 @@ compiles the library, not the iOS demo.)
 - [x] No-permission screen/UI capture, single-pass + resolution cap (`UIViewFrameSource`)
 - [x] Mic audio with time-sync + `AVAudioSession`/ARKit coexistence
 - [x] Live performance monitor
-- [ ] GPU overlay compositing — UI/HUD over AR & camera at full frame rate
+- [x] GPU overlay compositing — UI/HUD over AR at full frame rate (`ARViewFrameSource.setOverlay`)
+- [ ] GPU overlay for `CameraFrameSource` too
 - [ ] `ARSCNViewFrameSource` (SceneKit) + "migrate from ARVideoKit" guide
 - [ ] Photo / GIF / Live Photo capture
 - [ ] visionOS, HEVC, pause/resume

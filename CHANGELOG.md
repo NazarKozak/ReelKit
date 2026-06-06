@@ -6,6 +6,10 @@ All notable changes to ReelKit are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- `ARViewFrameSource.setOverlay(_:)` — GPU overlay compositing: alpha-blends a UI
+  HUD (a `CGImage`, updated only when it changes) over the camera+3D in the Metal
+  postProcess pass. Records AR **with UI at full frame rate** — no `drawHierarchy`.
+  The demo's AR "+ UI" path now uses this instead of the CPU screen composite.
 - `CameraFrameSource` — records a plain AVCaptureSession camera feed (back/front,
   optional fps cap, portrait), exposing its `session` for a live preview.
 - Demo: a Camera tab (live preview + record), an FPS selector (30 / 60 / Max),

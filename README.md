@@ -35,10 +35,13 @@ let url = try await recorder.stop()          // MP4 in tmp, ready to share/save
 Swift Package Manager:
 
 ```swift
-.package(url: "https://github.com/<you>/ReelKit.git", from: "0.1.0")
+.package(url: "https://github.com/NazarKozak/ReelKit.git", from: "0.1.0")
 ```
 
-Requires iOS 17+.
+…and add `"ReelKit"` to your target's dependencies. Requires iOS 17+.
+
+> Testing against a moving `main` instead of a release? Use
+> `.package(url: "https://github.com/NazarKozak/ReelKit.git", branch: "main")`.
 
 ## Sources
 

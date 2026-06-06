@@ -18,7 +18,8 @@ struct ContentView: View {
 
     @State private var mode: Mode = .screen
     @State private var audioEnabled = false   // default OFF → no mic permission prompt
-    @State private var arIncludeUI = true     // AR: capture camera+3D+UI vs camera-only
+    @State private var arIncludeUI = false    // AR default: fast camera-only (Sidequest-style).
+                                              // ON = camera+3D+UI screen composite (heavy).
     @State private var perf = ReelPerformanceMonitor()
     @State private var recorder: ReelRecorder?
     @State private var isRecording = false
@@ -70,7 +71,7 @@ struct ContentView: View {
 
                 if mode == .arkit {
                     Toggle(isOn: $arIncludeUI) {
-                        Label("UI & 3D", systemImage: "square.stack.3d.up.fill")
+                        Label("UI & 3D (heavy)", systemImage: "square.stack.3d.up.fill")
                     }
                     .toggleStyle(.button)
                     .tint(.white)
@@ -141,12 +142,14 @@ struct ContentView: View {
             return UIViewFrameSource(window, fps: 30, maxDimension: 1280)
         case .arkit:
             if arIncludeUI {
-                // Capture camera + RealityKit 3D + SwiftUI overlays, as on screen,
-                // in the correct device orientation (afterScreenUpdates: true).
+                // Camera + RealityKit 3D + SwiftUI overlays, as on screen. Heavy:
+                // drawHierarchy(afterScreenUpdates:) rasterizes the whole window on
+                // the CPU each frame. Lower res/fps to keep it usable.
                 guard let window = keyWindow else { return nil }
-                return UIViewFrameSource(window, fps: 30, afterScreenUpdates: true, maxDimension: 1440)
+                return UIViewFrameSource(window, fps: 24, afterScreenUpdates: true, maxDimension: 1080)
             } else {
-                // Clean camera-only path; rotates the landscape sensor buffer to portrait.
+                // Fast path: zero-copy ARFrame camera buffer (Sidequest-style),
+                // rotated to portrait. No 3D/UI — just the camera feed.
                 guard let arView else { return nil }
                 return RealityKitFrameSource(arView, orientation: .portrait)
             }

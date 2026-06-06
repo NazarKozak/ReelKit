@@ -6,6 +6,10 @@ All notable changes to ReelKit are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- `ARViewFrameSource` — high-performance AR recording via
+  `ARView.renderCallbacks.postProcess`: grabs the composited camera + RealityKit
+  texture on the GPU and blits it into a pixel buffer through a Metal render pass
+  (no `drawHierarchy`, no CPU rasterization). Captured already in view orientation.
 - `UIViewFrameSource(maxDimension:)` — caps the longest output side and
   downscales large screens, cutting `drawHierarchy` CPU/encode cost.
 - `RealityKitFrameSource(orientation:)` + `VideoOrientation` — rotates the

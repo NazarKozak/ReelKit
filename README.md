@@ -48,8 +48,11 @@ Swift Package Manager:
 ReelKit records whatever a `FrameSource` produces — same recorder, same writer:
 
 ```swift
-// 1. RealityKit ARView camera feed (BGRA, optional 2D overlay) — high fidelity.
-ReelRecorder(source: RealityKitFrameSource(arView), audio: .microphone)
+// 1. RealityKit ARView — camera + 3D content, GPU-fast (postProcess). Recommended.
+ReelRecorder(source: ARViewFrameSource(arView), audio: .microphone)
+
+// 1b. Camera feed only (no 3D), zero-copy ARFrame buffer, with rotation control.
+ReelRecorder(source: RealityKitFrameSource(arView, orientation: .portrait))
 
 // 2. Any UIView / the key window — screen capture, NO ReplayKit prompt.
 ReelRecorder(source: UIViewFrameSource(window, scale: 2.0, fps: 30))

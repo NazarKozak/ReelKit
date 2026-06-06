@@ -203,13 +203,13 @@ struct ContentView: View {
         switch mode {
         case .screen:
             guard let window = keyWindow else { return nil }
-            return UIViewFrameSource(window, fps: fps.displayLink, maxDimension: 720)
+            return UIViewFrameSource(window, fps: fps.displayLink, maxDimension: 1080)
         case .arkit:
             if arIncludeUI {
-                // Cap to 720p — drawHierarchy runs on the main thread and its cost
-                // scales with output pixels, so resolution is the main lever.
+                // 1080p. drawHierarchy runs on the main thread; resolution is the
+                // main lever here. For full-rate AR+UI use GPU overlay compositing.
                 guard let window = keyWindow else { return nil }
-                return UIViewFrameSource(window, fps: fps.displayLink, afterScreenUpdates: false, maxDimension: 720)
+                return UIViewFrameSource(window, fps: fps.displayLink, afterScreenUpdates: false, maxDimension: 1080)
             } else {
                 guard let arView else { return nil }
                 return ARViewFrameSource(arView)   // GPU; frame rate follows the AR session

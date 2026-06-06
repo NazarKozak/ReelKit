@@ -6,6 +6,10 @@ All notable changes to ReelKit are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- `CameraFrameSource` — records a plain AVCaptureSession camera feed (back/front,
+  optional fps cap, portrait), exposing its `session` for a live preview.
+- Demo: a Camera tab (live preview + record), an FPS selector (30 / 60 / Max),
+  and a gallery that lists recordings to Documents and plays them back.
 - `ARViewFrameSource` — high-performance AR recording via
   `ARView.renderCallbacks.postProcess`: grabs the composited camera + RealityKit
   texture on the GPU and blits it into a pixel buffer through a Metal render pass

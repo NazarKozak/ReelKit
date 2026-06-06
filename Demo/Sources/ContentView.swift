@@ -13,24 +13,37 @@ struct ContentView: View {
     enum Mode: String, CaseIterable, Identifiable {
         case screen = "Screen"
         case arkit = "ARKit"
+        case camera = "Camera"
         var id: String { rawValue }
     }
 
+    enum FPSOption: String, CaseIterable, Identifiable {
+        case fps30 = "30"
+        case fps60 = "60"
+        case max = "Max"
+        var id: String { rawValue }
+        /// CADisplayLink preferred frame rate (0 = device max).
+        var displayLink: Int { self == .max ? 0 : Int(rawValue) ?? 30 }
+        /// Camera frame cap (nil = device default).
+        var camera: Int? { self == .max ? nil : Int(rawValue) }
+    }
+
     @State private var mode: Mode = .screen
-    @State private var audioEnabled = false   // default OFF → no mic permission prompt
-    @State private var arIncludeUI = false    // AR default: GPU camera+3D (ARViewFrameSource).
-                                              // ON = also include SwiftUI UI (screen snapshot, fast).
+    @State private var fps: FPSOption = .fps30
+    @State private var audioEnabled = false
+    @State private var arIncludeUI = false
     @State private var perf = ReelPerformanceMonitor()
     @State private var recorder: ReelRecorder?
     @State private var isRecording = false
     @State private var savedURL: URL?
     @State private var arView: ARView?
+    @State private var cameraSource: CameraFrameSource?
+    @State private var showGallery = false
     @State private var spin = false
 
     var body: some View {
         ZStack {
-            content
-                .ignoresSafeArea()
+            content.ignoresSafeArea()
 
             VStack(spacing: 12) {
                 PerformanceOverlay(perf: perf, isRecording: isRecording)
@@ -49,21 +62,39 @@ struct ContentView: View {
         }
         .tint(.white)
         .onAppear { perf.start(); spin = true }
+        .onChange(of: mode) { _, newMode in syncCamera(for: newMode) }
+        .onChange(of: fps) { _, _ in if mode == .camera { syncCamera(for: .camera) } }
+        .sheet(isPresented: $showGallery) { GalleryView() }
     }
 
     @ViewBuilder
     private var content: some View {
         switch mode {
-        case .screen: animatedBackground
-        case .arkit:  ARViewContainer(arView: $arView)
+        case .screen:
+            animatedBackground
+        case .arkit:
+            ARViewContainer(arView: $arView)
+        case .camera:
+            if let cameraSource {
+                CameraPreview(session: cameraSource.session)
+            } else {
+                Color.black
+            }
         }
     }
 
     private var controls: some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 12) {
+        VStack(spacing: 14) {
+            HStack(spacing: 10) {
+                Picker("FPS", selection: $fps) {
+                    ForEach(FPSOption.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 180)
+                .disabled(isRecording)
+
                 Toggle(isOn: $audioEnabled) {
-                    Label("Mic", systemImage: audioEnabled ? "mic.fill" : "mic.slash.fill")
+                    Image(systemName: audioEnabled ? "mic.fill" : "mic.slash.fill")
                 }
                 .toggleStyle(.button)
                 .tint(.white)
@@ -71,7 +102,7 @@ struct ContentView: View {
 
                 if mode == .arkit {
                     Toggle(isOn: $arIncludeUI) {
-                        Label("+ UI", systemImage: "square.stack.3d.up.fill")
+                        Label("UI", systemImage: "square.stack.3d.up.fill")
                     }
                     .toggleStyle(.button)
                     .tint(.white)
@@ -79,10 +110,17 @@ struct ContentView: View {
                 }
             }
 
-            HStack(spacing: 32) {
-                Button {
-                    Task { await toggleRecording() }
-                } label: {
+            HStack(spacing: 28) {
+                Button { showGallery = true } label: {
+                    Image(systemName: "photo.stack.fill")
+                        .font(.system(size: 40))
+                        .foregroundStyle(.white)
+                        .shadow(radius: 6)
+                }
+                .accessibilityLabel("Open gallery")
+                .disabled(isRecording)
+
+                Button { Task { await toggleRecording() } } label: {
                     Image(systemName: isRecording ? "stop.circle.fill" : "record.circle")
                         .font(.system(size: 64))
                         .foregroundStyle(isRecording ? .red : .white)
@@ -93,19 +131,28 @@ struct ContentView: View {
                 if let savedURL, !isRecording {
                     ShareLink(item: savedURL) {
                         Image(systemName: "square.and.arrow.up.circle.fill")
-                            .font(.system(size: 56))
+                            .font(.system(size: 40))
                             .foregroundStyle(.white)
                             .shadow(radius: 6)
                     }
                     .accessibilityLabel("Share recording")
                 }
             }
+        }
+    }
 
-            if let savedURL, !isRecording {
-                Text("Saved \(savedURL.lastPathComponent) — tap share to export")
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.85))
-            }
+    // MARK: - Camera lifecycle
+
+    @MainActor
+    private func syncCamera(for newMode: Mode) {
+        if newMode == .camera {
+            cameraSource?.stopRunning()
+            let source = CameraFrameSource(position: .back, fps: fps.camera)
+            source.startRunning()
+            cameraSource = source
+        } else {
+            cameraSource?.stopRunning()
+            cameraSource = nil
         }
     }
 
@@ -116,7 +163,9 @@ struct ContentView: View {
         if isRecording {
             guard let recorder else { return }
             isRecording = false
-            savedURL = try? await recorder.stop()
+            if let tmp = try? await recorder.stop() {
+                savedURL = RecordingStore.save(tmp)
+            }
             self.recorder = nil
             return
         }
@@ -138,21 +187,17 @@ struct ContentView: View {
         switch mode {
         case .screen:
             guard let window = keyWindow else { return nil }
-            // Cap to 1280 on the long side → much lighter on large screens.
-            return UIViewFrameSource(window, fps: 30, maxDimension: 1280)
+            return UIViewFrameSource(window, fps: fps.displayLink, maxDimension: 1280)
         case .arkit:
             if arIncludeUI {
-                // Camera + 3D + SwiftUI overlays, as on screen. afterScreenUpdates:
-                // false snapshots already-rendered content — fast, no frame loss
-                // (matches the Sidequest recorder).
                 guard let window = keyWindow else { return nil }
-                return UIViewFrameSource(window, fps: 30, afterScreenUpdates: false)
+                return UIViewFrameSource(window, fps: fps.displayLink, afterScreenUpdates: false)
             } else {
-                // Fast GPU path: camera + RealityKit 3D via postProcess. Smooth,
-                // already in the view's orientation. No SwiftUI overlays.
                 guard let arView else { return nil }
-                return ARViewFrameSource(arView)
+                return ARViewFrameSource(arView)   // GPU; frame rate follows the AR session
             }
+        case .camera:
+            return cameraSource
         }
     }
 

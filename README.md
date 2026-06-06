@@ -1,5 +1,11 @@
 # ReelKit
 
+[![CI](https://github.com/NazarKozak/ReelKit/actions/workflows/ci.yml/badge.svg)](https://github.com/NazarKozak/ReelKit/actions/workflows/ci.yml)
+![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg)
+![Platforms](https://img.shields.io/badge/Platforms-iOS%2017%2B-blue.svg)
+![SPM](https://img.shields.io/badge/SwiftPM-compatible-brightgreen.svg)
+![License](https://img.shields.io/badge/License-MIT-green.svg)
+
 **Record anything on iOS to video — an AR scene, the camera, or any view — with synced audio, without ReplayKit's permission prompt.**
 
 ReelKit is a small, Swift-concurrency-native recording SDK. You give it a *source* (RealityKit AR, the device camera, or a UIKit/SwiftUI view) and it writes an MP4 — frames recycled from a pool, audio time-synced to the video clock, the whole pipeline driven by a single `actor`.

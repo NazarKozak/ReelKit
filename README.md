@@ -1,34 +1,33 @@
 # ReelKit
 
-**Record your ARKit / RealityKit session — and any view — to video, with audio, without ReplayKit's permission prompt.**
+**Record anything on iOS to video — an AR scene, the camera, or any view — with synced audio, without ReplayKit's permission prompt.**
 
-A modern, Swift-concurrency-native successor to ARVideoKit, built for the RealityKit era. One recorder, swappable sources, audio that actually syncs.
+ReelKit is a small, Swift-concurrency-native recording SDK. You give it a *source* (RealityKit AR, the device camera, or a UIKit/SwiftUI view) and it writes an MP4 — frames recycled from a pool, audio time-synced to the video clock, the whole pipeline driven by a single `actor`.
 
-> _(GIF placeholder: AR recording with a live FPS/CPU HUD overlay)_
+> _(GIF placeholder: recording an AR scene with a live FPS / CPU / MEM HUD)_
 
 ```swift
 import ReelKit
 
 let recorder = ReelRecorder(
-    source: RealityKitFrameSource(arView),   // or UIViewFrameSource(window), ARSCNViewFrameSource(...)
-    audio: .microphone
+    source: ARViewFrameSource(arView),   // or CameraFrameSource(), UIViewFrameSource(window), …
+    audio: .microphone                   // or .none (default — no permission prompt)
 )
 
 try await recorder.start()
-// ... user does stuff ...
-let url = try await recorder.stop()          // MP4 in tmp, ready to share/save
+// … user does stuff …
+let url = try await recorder.stop()      // MP4 in the temp dir, ready to share or save
 ```
 
-## Why ReelKit
+## Features
 
-| | ReplayKit | ARVideoKit | **ReelKit** |
-|---|:---:|:---:|:---:|
-| No permission prompt (in-app capture) | ❌ | ✅ | ✅ |
-| RealityKit `ARView` | ⚠️ | ❌ | ✅ |
-| ARKit `ARSCNView` | ⚠️ | ✅ | ✅ (Phase 2) |
-| Plain UIKit/SwiftUI screen capture | ❌ | ❌ | ✅ |
-| Audio time-synced to video clock | ✅ | ⚠️ | ✅ |
-| Swift 6 / async-native | ❌ | ❌ | ✅ |
+- 🎥 **Four sources, one recorder** — AR (camera + 3D), AR camera-only, the device camera, or any view.
+- 🚫 **No ReplayKit prompt** — in-app capture of your own content; nothing to authorize.
+- ⚡ **GPU-fast AR** — `ARViewFrameSource` taps `postProcess` and never touches the CPU rasterizer.
+- 🎙 **Audio that lines up** — microphone capture with `CMSampleBuffer` time-correction and `AVAudioSession`/`ARSession` coexistence. **Off by default** — no mic prompt unless you ask.
+- 📐 **Resolution cap** — downscale large screens to keep capture cheap.
+- 📊 **Live perf readout** — `ReelPerformanceMonitor` (FPS / CPU / memory) you can show on screen.
+- 🧱 **Swift 6, async-native** — actors, `AsyncSequence`, strict concurrency.
 
 ## Install
 
@@ -38,81 +37,135 @@ Swift Package Manager:
 .package(url: "https://github.com/NazarKozak/ReelKit.git", from: "0.1.0")
 ```
 
-…and add `"ReelKit"` to your target's dependencies. Requires iOS 17+.
+…and add `"ReelKit"` to your target's dependencies. Requires **iOS 17+**.
 
-> Testing against a moving `main` instead of a release? Use
-> `.package(url: "https://github.com/NazarKozak/ReelKit.git", branch: "main")`.
+> Tracking the latest instead of a release? Use `branch: "main"`.
 
 ## Sources
 
-ReelKit records whatever a `FrameSource` produces — same recorder, same writer:
+Everything records through a `FrameSource`. Pick the one that matches what you want on tape:
+
+| Source | Captures | How | Cost |
+|---|---|---|:---:|
+| **`ARViewFrameSource`** | RealityKit AR: **camera + 3D content** | `ARView.renderCallbacks.postProcess` → Metal blit | 🟢 GPU |
+| **`RealityKitFrameSource`** | AR **camera feed only** (no 3D/UI) | zero-copy `ARFrame` buffer, GPU rotate/convert | 🟢 GPU |
+| **`CameraFrameSource`** | a plain **device camera** (back/front), with preview | `AVCaptureSession` video output | 🟢 GPU |
+| **`UIViewFrameSource`** | **any UIView / the whole screen** (UIKit + SwiftUI) | single-pass `drawHierarchy`, pooled buffers | 🟡 CPU |
 
 ```swift
-// 1. RealityKit ARView — camera + 3D content, GPU-fast (postProcess). Recommended.
+// AR scene — camera + 3D, recommended for ARKit/RealityKit.
 ReelRecorder(source: ARViewFrameSource(arView), audio: .microphone)
 
-// 1b. Camera feed only (no 3D), zero-copy ARFrame buffer, with rotation control.
+// AR camera feed only (clean), with rotation control.
 ReelRecorder(source: RealityKitFrameSource(arView, orientation: .portrait))
 
-// 2. Any UIView / the key window — screen capture, NO ReplayKit prompt.
-ReelRecorder(source: UIViewFrameSource(window, scale: 2.0, fps: 30))
+// The device camera (like a camera app). Expose `.session` to show a preview.
+let camera = CameraFrameSource(position: .back, fps: 60)
+camera.startRunning()                       // drives the preview
+ReelRecorder(source: camera)
 
-// 2b. Record AR camera + RealityKit 3D overlays + SwiftUI HUD, exactly as on
-//     screen — capture the ARView's container with afterScreenUpdates: true.
-ReelRecorder(source: UIViewFrameSource(arContainerView, afterScreenUpdates: true))
-
-// 3. Bring-your-own frames.
-ReelRecorder(source: myCustomFrameSource)
+// Any view or the key window — screen capture, NO ReplayKit prompt.
+ReelRecorder(source: UIViewFrameSource(window, maxDimension: 1080))
 ```
 
 ### No-permission screen capture
 
-`UIViewFrameSource` renders **your app's own view hierarchy** with `drawHierarchy`, so it
-never triggers the system screen-recording prompt. The trade-off vs ReplayKit: it captures
-only your app (not other apps / system UI) — which is exactly what an in-app recorder wants.
+`UIViewFrameSource` renders **your app's own view hierarchy** with `drawHierarchy`, so it never
+triggers the system screen-recording prompt. Trade-off vs ReplayKit: it captures only your app
+(not other apps or system UI) — exactly what an in-app recorder wants.
+
+`drawHierarchy` runs on the main thread and its cost scales with output pixels, so use
+`maxDimension:` to cap resolution on large screens. To also capture Metal-backed content
+(an `ARView`) in the same pass, pass `afterScreenUpdates: true` (heavier).
+
+## Audio
+
+Audio is opt-in — the recorder defaults to `.none`, so nothing prompts the user:
+
+```swift
+ReelRecorder(source: …, audio: .microphone)   // mic, time-synced to the video clock
+ReelRecorder(source: …, audio: .none)          // silent (default)
+```
+
+The microphone path manages `AVAudioSession` (interruptions, route changes) and re-times each
+sample buffer to the video session clock, so audio and video stay in lockstep even alongside ARKit.
+
+## Output & sharing
+
+`stop()` returns the MP4 `URL` in the temp directory. Move it where you like, or hand it straight
+to a `ShareLink`:
+
+```swift
+let url = try await recorder.stop()
+ShareLink(item: url)                // AirDrop / Save Video / Files
+```
 
 ## Performance
 
 ReelKit is built to be cheap:
 
-- **Single-pass capture** — `UIViewFrameSource` renders straight into the pixel buffer's
-  backing `CGContext` (no intermediate `UIImage`/`CGImage` per frame).
-- **Recycled buffers** — frames come from a `CVPixelBufferPool`, not fresh allocations.
-- **Zero-copy AR** — `RealityKitFrameSource` writes the captured `ARFrame` buffer directly.
-- **Serialized, lock-free** — the writer is driven by a single `actor`, no manual locking.
+- **GPU AR path** — `ARViewFrameSource` blits the composited render texture into a pixel buffer; no CPU rasterization.
+- **Zero-copy AR camera** — `RealityKitFrameSource` hands the `ARFrame` buffer straight to a GPU convert/rotate.
+- **Single-pass UI capture** — `UIViewFrameSource` renders into the pixel buffer's backing `CGContext`, no intermediate `UIImage`.
+- **Recycled buffers** — every source pulls from a `CVPixelBufferPool`.
+- **Serialized, lock-free** — one `actor` owns the writer; no manual locking.
 
-See it live: `ReelPerformanceMonitor` exposes `fps`, `cpu`, and `memoryMB`, and the demo
-shows them in an on-screen HUD while recording — so you can watch the overhead in real time.
+Watch it live with `ReelPerformanceMonitor`:
 
 ```swift
 @State private var perf = ReelPerformanceMonitor()
-// ...
+// …
 .onAppear { perf.start() }
 Text(perf.summary)   // "60 fps · 8% cpu · 124 MB"
 ```
 
 ## Demo
 
-Open **`Demo/ReelKitDemo.xcodeproj`** in Xcode, pick an iOS Simulator (or your device), and run.
-It records the screen with a live FPS/CPU/MEM overlay so you can watch the capture overhead.
+Open **`Demo/ReelKitDemo.xcodeproj`** in Xcode, pick a simulator or your device, and run. The demo has:
+
+- three tabs — **Screen**, **ARKit**, **Camera**;
+- an **FPS selector** (30 / 60 / Max) and a microphone toggle;
+- a **gallery** that saves recordings to Documents and plays them back;
+- a live **FPS / CPU / MEM** overlay.
+
+> AR and camera capture need a real device (the simulator has no camera).
 
 The project depends on the local package and uses Xcode's file-system-synchronized groups —
-drop any `.swift` file into `Demo/Sources/` and it's picked up automatically, no project edits.
-(The demo isn't built by `swift build`, which only compiles the library.)
+drop a `.swift` file into `Demo/Sources/` and it's picked up automatically. (`swift build` only
+compiles the library, not the iOS demo.)
+
+## Why ReelKit
+
+| | ReplayKit | ARVideoKit | **ReelKit** |
+|---|:---:|:---:|:---:|
+| No permission prompt (in-app capture) | ❌ | ✅ | ✅ |
+| RealityKit `ARView` (camera + 3D) | ⚠️ | ❌ | ✅ |
+| Plain device camera + preview | — | — | ✅ |
+| Any UIKit/SwiftUI view / screen | ❌ | ❌ | ✅ |
+| Audio time-synced to the video clock | ✅ | ⚠️ | ✅ |
+| Swift 6 / async-native | ❌ | ❌ | ✅ |
+| Maintained for the RealityKit era | ✅ | ⚠️ | ✅ |
+
+## Requirements
+
+- iOS 17+
+- Swift 6 / Xcode 16+
+- For AR/camera capture: a real device. Add `NSCameraUsageDescription` (and
+  `NSMicrophoneUsageDescription` if you record audio) to your Info.plist.
 
 ## Roadmap
 
-- [x] RealityKit `ARView` recording (camera → BGRA via GPU converter)
-- [x] No-permission `UIView` screen capture (single-pass, pooled buffers)
-- [x] AR camera + 3D overlays via `UIViewFrameSource(afterScreenUpdates: true)`
-- [x] 2D overlay compositing on the AR camera buffer
+- [x] GPU AR recording — camera + 3D (`ARViewFrameSource`)
+- [x] AR camera-only, zero-copy with orientation control (`RealityKitFrameSource`)
+- [x] Device camera with preview (`CameraFrameSource`)
+- [x] No-permission screen/UI capture, single-pass + resolution cap (`UIViewFrameSource`)
 - [x] Mic audio with time-sync + `AVAudioSession`/ARKit coexistence
 - [x] Live performance monitor
-- [ ] Bespoke `ARSCNViewFrameSource` (SCNRenderer) + "migrate from ARVideoKit" guide
-- [ ] Automatic interface-orientation rotation for portrait AR
+- [ ] GPU overlay compositing — UI/HUD over AR & camera at full frame rate
+- [ ] `ARSCNViewFrameSource` (SceneKit) + "migrate from ARVideoKit" guide
 - [ ] Photo / GIF / Live Photo capture
 - [ ] visionOS, HEVC, pause/resume
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).

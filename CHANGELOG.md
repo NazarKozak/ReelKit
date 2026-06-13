@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to ReelKit are documented here. Format follows
+All notable changes to SurfaceRecorderSDK are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow SemVer.
 
 ## [Unreleased]
@@ -43,7 +43,7 @@ All notable changes to ReelKit are documented here. Format follows
 Initial public release.
 
 ### Added
-- `ReelRecorder` — actor-driven recorder that writes a `FrameSource` (plus
+- `SurfaceRecorder` — actor-driven recorder that writes a `FrameSource` (plus
   optional audio) to MP4 without ReplayKit.
 - `RealityKitFrameSource` — records a RealityKit `ARView` camera feed; converts
   the `ARFrame` YCbCr buffer to BGRA via a GPU-backed `FrameConverter`, with
@@ -54,7 +54,7 @@ Initial public release.
   the video clock, and `AVAudioSession`/`ARSession` coexistence.
 - `VideoWriter` — `AVAssetWriter` pipeline with pooled pixel buffers, bitrate
   derived from resolution/fps/quality.
-- `ReelPerformanceMonitor` — live FPS / CPU / memory readout (mach-based).
+- `SurfacePerformanceMonitor` — live FPS / CPU / memory readout (mach-based).
 - Reference SwiftUI demo with an on-screen load HUD.
 
 ### Known limitations

@@ -1,6 +1,6 @@
 //
-//  ReelRecorder.swift
-//  ReelKit
+//  SurfaceRecorder.swift
+//  SurfaceRecorderSDK
 //
 //  Created by Nazar Kozak on 05.06.2026.
 //
@@ -10,12 +10,12 @@ import AVFoundation
 /// Records a ``FrameSource`` (and optional audio) to an MP4 file — without ReplayKit.
 ///
 /// ```swift
-/// let recorder = ReelRecorder(source: RealityKitFrameSource(arView), audio: .microphone)
+/// let recorder = SurfaceRecorder(source: RealityKitFrameSource(arView), audio: .microphone)
 /// try await recorder.start()
 /// // ...
 /// let url = try await recorder.stop()
 /// ```
-public actor ReelRecorder {
+public actor SurfaceRecorder {
     private let source: FrameSource
     private let audioMode: AudioMode
     private let config: RecordingConfig
@@ -39,12 +39,12 @@ public actor ReelRecorder {
         self.config = config
     }
 
-    /// Starts recording. Throws ``ReelError/alreadyRecording`` if already active.
+    /// Starts recording. Throws ``RecorderError/alreadyRecording`` if already active.
     public func start() async throws {
-        guard !isRecording else { throw ReelError.alreadyRecording }
+        guard !isRecording else { throw RecorderError.alreadyRecording }
 
         let size = config.size ?? source.nativeSize
-        guard size.width > 0, size.height > 0 else { throw ReelError.sourceUnavailable }
+        guard size.width > 0, size.height > 0 else { throw RecorderError.sourceUnavailable }
 
         let writer = try VideoWriter(size: size, config: config, audio: audioMode)
         self.writer = writer
@@ -71,7 +71,7 @@ public actor ReelRecorder {
 
     /// Stops recording and returns the URL of the written MP4.
     public func stop() async throws -> URL {
-        guard isRecording, let writer else { throw ReelError.notRecording }
+        guard isRecording, let writer else { throw RecorderError.notRecording }
         isRecording = false
 
         source.stop()

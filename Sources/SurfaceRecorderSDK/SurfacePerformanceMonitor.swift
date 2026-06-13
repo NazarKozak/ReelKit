@@ -1,6 +1,6 @@
 //
-//  ReelPerformanceMonitor.swift
-//  ReelKit
+//  SurfacePerformanceMonitor.swift
+//  SurfaceRecorderSDK
 //
 //  Created by Nazar Kozak on 05.06.2026.
 //
@@ -15,14 +15,14 @@ import Darwin
 /// Observable, main-actor live performance readout.
 ///
 /// ```swift
-/// @State private var perf = ReelPerformanceMonitor()
+/// @State private var perf = SurfacePerformanceMonitor()
 /// // ...
 /// .onAppear { perf.start() }
 /// Text(perf.summary)
 /// ```
 @MainActor
 @Observable
-public final class ReelPerformanceMonitor {
+public final class SurfacePerformanceMonitor {
     /// Rendered frames per second (rolling, updated ~1×/sec).
     public private(set) var fps: Double = 0
     /// Process CPU load as a fraction of a single core (1.0 == one full core; can exceed 1.0).

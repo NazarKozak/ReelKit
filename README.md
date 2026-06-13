@@ -1,6 +1,6 @@
-# ReelKit
+# SurfaceRecorderSDK
 
-[![CI](https://github.com/NazarKozak/ReelKit/actions/workflows/ci.yml/badge.svg)](https://github.com/NazarKozak/ReelKit/actions/workflows/ci.yml)
+[![CI](https://github.com/NazarKozak/SurfaceRecorderSDK/actions/workflows/ci.yml/badge.svg)](https://github.com/NazarKozak/SurfaceRecorderSDK/actions/workflows/ci.yml)
 ![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg)
 ![Platforms](https://img.shields.io/badge/Platforms-iOS%2017%2B-blue.svg)
 ![SPM](https://img.shields.io/badge/SwiftPM-compatible-brightgreen.svg)
@@ -8,14 +8,14 @@
 
 **Record anything on iOS to video — an AR scene, the camera, or any view — with synced audio, without ReplayKit's permission prompt.**
 
-ReelKit is a small, Swift-concurrency-native recording SDK. You give it a *source* (RealityKit AR, the device camera, or a UIKit/SwiftUI view) and it writes an MP4 — frames recycled from a pool, audio time-synced to the video clock, the whole pipeline driven by a single `actor`.
+SurfaceRecorderSDK is a small, Swift-concurrency-native recording SDK. You give it a *source* (RealityKit AR, the device camera, or a UIKit/SwiftUI view) and it writes an MP4 — frames recycled from a pool, audio time-synced to the video clock, the whole pipeline driven by a single `actor`.
 
 > _(GIF placeholder: recording an AR scene with a live FPS / CPU / MEM HUD)_
 
 ```swift
-import ReelKit
+import SurfaceRecorderSDK
 
-let recorder = ReelRecorder(
+let recorder = SurfaceRecorder(
     source: ARViewFrameSource(arView),   // or CameraFrameSource(), UIViewFrameSource(window), …
     audio: .microphone                   // or .none (default — no permission prompt)
 )
@@ -32,7 +32,7 @@ let url = try await recorder.stop()      // MP4 in the temp dir, ready to share 
 - ⚡ **GPU-fast AR** — `ARViewFrameSource` taps `postProcess` and never touches the CPU rasterizer.
 - 🎙 **Audio that lines up** — microphone capture with `CMSampleBuffer` time-correction and `AVAudioSession`/`ARSession` coexistence. **Off by default** — no mic prompt unless you ask.
 - 📐 **Resolution cap** — downscale large screens to keep capture cheap.
-- 📊 **Live perf readout** — `ReelPerformanceMonitor` (FPS / CPU / memory) you can show on screen.
+- 📊 **Live perf readout** — `SurfacePerformanceMonitor` (FPS / CPU / memory) you can show on screen.
 - 🧱 **Swift 6, async-native** — actors, `AsyncSequence`, strict concurrency.
 
 ## Install
@@ -40,10 +40,10 @@ let url = try await recorder.stop()      // MP4 in the temp dir, ready to share 
 Swift Package Manager:
 
 ```swift
-.package(url: "https://github.com/NazarKozak/ReelKit.git", from: "0.1.0")
+.package(url: "https://github.com/NazarKozak/SurfaceRecorderSDK.git", from: "0.1.0")
 ```
 
-…and add `"ReelKit"` to your target's dependencies. Requires **iOS 17+**.
+…and add `"SurfaceRecorderSDK"` to your target's dependencies. Requires **iOS 17+**.
 
 > Tracking the latest instead of a release? Use `branch: "main"`.
 
@@ -60,18 +60,18 @@ Everything records through a `FrameSource`. Pick the one that matches what you w
 
 ```swift
 // AR scene — camera + 3D, recommended for ARKit/RealityKit.
-ReelRecorder(source: ARViewFrameSource(arView), audio: .microphone)
+SurfaceRecorder(source: ARViewFrameSource(arView), audio: .microphone)
 
 // AR camera feed only (clean), with rotation control.
-ReelRecorder(source: RealityKitFrameSource(arView, orientation: .portrait))
+SurfaceRecorder(source: RealityKitFrameSource(arView, orientation: .portrait))
 
 // The device camera (like a camera app). Expose `.session` to show a preview.
 let camera = CameraFrameSource(position: .back, fps: 60)
 camera.startRunning()                       // drives the preview
-ReelRecorder(source: camera)
+SurfaceRecorder(source: camera)
 
 // Any view or the key window — screen capture, NO ReplayKit prompt.
-ReelRecorder(source: UIViewFrameSource(window, maxDimension: 1080))
+SurfaceRecorder(source: UIViewFrameSource(window, maxDimension: 1080))
 ```
 
 ### No-permission screen capture
@@ -89,8 +89,8 @@ triggers the system screen-recording prompt. Trade-off vs ReplayKit: it captures
 Audio is opt-in — the recorder defaults to `.none`, so nothing prompts the user:
 
 ```swift
-ReelRecorder(source: …, audio: .microphone)   // mic, time-synced to the video clock
-ReelRecorder(source: …, audio: .none)          // silent (default)
+SurfaceRecorder(source: …, audio: .microphone)   // mic, time-synced to the video clock
+SurfaceRecorder(source: …, audio: .none)          // silent (default)
 ```
 
 The microphone path manages `AVAudioSession` (interruptions, route changes) and re-times each
@@ -108,7 +108,7 @@ ShareLink(item: url)                // AirDrop / Save Video / Files
 
 ## Performance
 
-ReelKit is built to be cheap:
+SurfaceRecorderSDK is built to be cheap:
 
 - **GPU AR path** — `ARViewFrameSource` blits the composited render texture into a pixel buffer; no CPU rasterization.
 - **Zero-copy AR camera** — `RealityKitFrameSource` hands the `ARFrame` buffer straight to a GPU convert/rotate.
@@ -116,10 +116,10 @@ ReelKit is built to be cheap:
 - **Recycled buffers** — every source pulls from a `CVPixelBufferPool`.
 - **Serialized, lock-free** — one `actor` owns the writer; no manual locking.
 
-Watch it live with `ReelPerformanceMonitor`:
+Watch it live with `SurfacePerformanceMonitor`:
 
 ```swift
-@State private var perf = ReelPerformanceMonitor()
+@State private var perf = SurfacePerformanceMonitor()
 // …
 .onAppear { perf.start() }
 Text(perf.summary)   // "60 fps · 8% cpu · 124 MB"
@@ -127,7 +127,7 @@ Text(perf.summary)   // "60 fps · 8% cpu · 124 MB"
 
 ## Demo
 
-Open **`Demo/ReelKitDemo.xcodeproj`** in Xcode, pick a simulator or your device, and run. The demo has:
+Open **`Demo/SurfaceRecorderSDKDemo.xcodeproj`** in Xcode, pick a simulator or your device, and run. The demo has:
 
 - three tabs — **Screen**, **ARKit**, **Camera**;
 - an **FPS selector** (30 / 60 / Max) and a microphone toggle;
@@ -140,9 +140,9 @@ The project depends on the local package and uses Xcode's file-system-synchroniz
 drop a `.swift` file into `Demo/Sources/` and it's picked up automatically. (`swift build` only
 compiles the library, not the iOS demo.)
 
-## Why ReelKit
+## Why SurfaceRecorderSDK
 
-| | ReplayKit | ARVideoKit | **ReelKit** |
+| | ReplayKit | ARVideoKit | **SurfaceRecorderSDK** |
 |---|:---:|:---:|:---:|
 | No permission prompt (in-app capture) | ❌ | ✅ | ✅ |
 | RealityKit `ARView` (camera + 3D) | ⚠️ | ❌ | ✅ |

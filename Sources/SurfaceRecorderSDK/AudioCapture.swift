@@ -1,6 +1,6 @@
 //
 //  AudioCapture.swift
-//  ReelKit
+//  SurfaceRecorderSDK
 //
 //  Created by Nazar Kozak on 05.06.2026.
 //
@@ -17,7 +17,7 @@
 final class AudioCapture: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate, @unchecked Sendable {
     private let session = AVCaptureSession()
     private let output = AVCaptureAudioDataOutput()
-    private let queue = DispatchQueue(label: "reelkit.audio")
+    private let queue = DispatchQueue(label: "surfacerec.audio")
     private let onSample: @Sendable (CMSampleBuffer) -> Void
 
     /// Offset between the audio device clock and the video session clock.
@@ -41,7 +41,7 @@ final class AudioCapture: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate
             session.canAddOutput(output)
         else {
             session.commitConfiguration()
-            throw ReelError.sourceUnavailable
+            throw RecorderError.sourceUnavailable
         }
         session.addInput(input)
         output.setSampleBufferDelegate(self, queue: queue)

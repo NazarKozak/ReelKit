@@ -1,6 +1,6 @@
 //
 //  CameraFrameSource.swift
-//  ReelKit
+//  SurfaceRecorderSDK
 //
 //  Created by Nazar Kozak on 05.06.2026.
 //
@@ -14,7 +14,7 @@
 import CoreMedia
 import CoreVideo
 
-/// Captures a device camera and records it through ReelKit.
+/// Captures a device camera and records it through SurfaceRecorderSDK.
 public final class CameraFrameSource: NSObject, FrameSource, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
     public enum Position: Sendable { case back, front }
 
@@ -23,7 +23,7 @@ public final class CameraFrameSource: NSObject, FrameSource, AVCaptureVideoDataO
     public let nativeSize: CGSize
 
     private let output = AVCaptureVideoDataOutput()
-    private let queue = DispatchQueue(label: "reelkit.camera")
+    private let queue = DispatchQueue(label: "surfacerec.camera")
     private var continuation: AsyncStream<TimedFrame>.Continuation?
     private var recording = false
     private var firstPTS: CMTime?

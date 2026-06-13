@@ -1,6 +1,6 @@
 //
 //  RecordingStore.swift
-//  ReelKitDemo
+//  SurfaceRecorderSDKDemo
 //
 //  Created by Nazar Kozak on 05.06.2026.
 //

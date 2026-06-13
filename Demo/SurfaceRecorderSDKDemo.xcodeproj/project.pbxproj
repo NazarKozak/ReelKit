@@ -7,11 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		AA0000000000000000000012 /* ReelKit in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000011 /* ReelKit */; };
+		AA0000000000000000000012 /* SurfaceRecorderSDK in Frameworks */ = {isa = PBXBuildFile; productRef = AA0000000000000000000011 /* SurfaceRecorderSDK */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		AA0000000000000000000006 /* ReelKitDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ReelKitDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA0000000000000000000006 /* SurfaceRecorderSDKDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SurfaceRecorderSDKDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -23,7 +23,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA0000000000000000000012 /* ReelKit in Frameworks */,
+				AA0000000000000000000012 /* SurfaceRecorderSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -41,7 +41,7 @@
 		AA0000000000000000000003 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				AA0000000000000000000006 /* ReelKitDemo.app */,
+				AA0000000000000000000006 /* SurfaceRecorderSDKDemo.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -49,9 +49,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		AA0000000000000000000005 /* ReelKitDemo */ = {
+		AA0000000000000000000005 /* SurfaceRecorderSDKDemo */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = AA000000000000000000000B /* Build configuration list for PBXNativeTarget "ReelKitDemo" */;
+			buildConfigurationList = AA000000000000000000000B /* Build configuration list for PBXNativeTarget "SurfaceRecorderSDKDemo" */;
 			buildPhases = (
 				AA0000000000000000000007 /* Sources */,
 				AA0000000000000000000008 /* Frameworks */,
@@ -64,12 +64,12 @@
 			fileSystemSynchronizedGroups = (
 				AA0000000000000000000004 /* Sources */,
 			);
-			name = ReelKitDemo;
+			name = SurfaceRecorderSDKDemo;
 			packageProductDependencies = (
-				AA0000000000000000000011 /* ReelKit */,
+				AA0000000000000000000011 /* SurfaceRecorderSDK */,
 			);
-			productName = ReelKitDemo;
-			productReference = AA0000000000000000000006 /* ReelKitDemo.app */;
+			productName = SurfaceRecorderSDKDemo;
+			productReference = AA0000000000000000000006 /* SurfaceRecorderSDKDemo.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -87,7 +87,7 @@
 					};
 				};
 			};
-			buildConfigurationList = AA000000000000000000000A /* Build configuration list for PBXProject "ReelKitDemo" */;
+			buildConfigurationList = AA000000000000000000000A /* Build configuration list for PBXProject "SurfaceRecorderSDKDemo" */;
 			compatibilityVersion = "Xcode 16.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -104,7 +104,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				AA0000000000000000000005 /* ReelKitDemo */,
+				AA0000000000000000000005 /* SurfaceRecorderSDKDemo */,
 			);
 		};
 /* End PBXProject section */
@@ -179,8 +179,8 @@
 				DEVELOPMENT_TEAM = WP95535JP5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Used to run the ARKit camera in the ReelKit demo.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used to record audio together with your screen recording in the ReelKit demo.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Used to run the ARKit camera in the SurfaceRecorderSDK demo.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used to record audio together with your screen recording in the SurfaceRecorderSDK demo.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -192,7 +192,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.nazarkozak.ReelKitDemo;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nazarkozak.SurfaceRecorderSDKDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 6.0;
@@ -209,8 +209,8 @@
 				DEVELOPMENT_TEAM = WP95535JP5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Used to run the ARKit camera in the ReelKit demo.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used to record audio together with your screen recording in the ReelKit demo.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Used to run the ARKit camera in the SurfaceRecorderSDK demo.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used to record audio together with your screen recording in the SurfaceRecorderSDK demo.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -222,7 +222,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.nazarkozak.ReelKitDemo;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nazarkozak.SurfaceRecorderSDKDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 6.0;
@@ -233,7 +233,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		AA000000000000000000000A /* Build configuration list for PBXProject "ReelKitDemo" */ = {
+		AA000000000000000000000A /* Build configuration list for PBXProject "SurfaceRecorderSDKDemo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				AA000000000000000000000C /* Debug */,
@@ -242,7 +242,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		AA000000000000000000000B /* Build configuration list for PBXNativeTarget "ReelKitDemo" */ = {
+		AA000000000000000000000B /* Build configuration list for PBXNativeTarget "SurfaceRecorderSDKDemo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				AA000000000000000000000E /* Debug */,
@@ -261,9 +261,9 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		AA0000000000000000000011 /* ReelKit */ = {
+		AA0000000000000000000011 /* SurfaceRecorderSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = ReelKit;
+			productName = SurfaceRecorderSDK;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

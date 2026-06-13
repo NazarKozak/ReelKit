@@ -1,11 +1,11 @@
 //
 //  ARViewContainer.swift
-//  ReelKitDemo
+//  SurfaceRecorderSDKDemo
 //
 //  Created by Nazar Kozak on 05.06.2026.
 //
 //  A minimal RealityKit ARView with a floating box, exposed back to the demo so
-//  it can be recorded via ReelKit's RealityKitFrameSource. AR runs on device
+//  it can be recorded via SurfaceRecorderSDK's RealityKitFrameSource. AR runs on device
 //  only — the simulator shows an empty view.
 //
 

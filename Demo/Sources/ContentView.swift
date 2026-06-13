@@ -1,12 +1,12 @@
 //
 //  ContentView.swift
-//  ReelKitDemo
+//  SurfaceRecorderSDKDemo
 //
 //  Created by Nazar Kozak on 05.06.2026.
 //
 
 import SwiftUI
-import ReelKit
+import SurfaceRecorderSDK
 import ARKit
 import RealityKit
 
@@ -33,8 +33,8 @@ struct ContentView: View {
     @State private var fps: FPSOption = .fps30
     @State private var audioEnabled = false
     @State private var arIncludeUI = false
-    @State private var perf = ReelPerformanceMonitor()
-    @State private var recorder: ReelRecorder?
+    @State private var perf = SurfacePerformanceMonitor()
+    @State private var recorder: SurfaceRecorder?
     @State private var isRecording = false
     @State private var savedURL: URL?
     @State private var arView: ARView?
@@ -195,7 +195,7 @@ struct ContentView: View {
         }
 
         guard let source = makeSource() else { return }
-        let recorder = ReelRecorder(source: source, audio: audioEnabled ? .microphone : .none)
+        let recorder = SurfaceRecorder(source: source, audio: audioEnabled ? .microphone : .none)
         self.recorder = recorder
         do {
             savedURL = nil

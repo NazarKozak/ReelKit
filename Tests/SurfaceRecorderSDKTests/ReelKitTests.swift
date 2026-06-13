@@ -1,13 +1,13 @@
 //
-//  ReelKitTests.swift
-//  ReelKit
+//  SurfaceRecorderSDKTests.swift
+//  SurfaceRecorderSDK
 //
 //  Created by Nazar Kozak on 05.06.2026.
 //
 
 import Testing
 import CoreGraphics
-@testable import ReelKit
+@testable import SurfaceRecorderSDK
 
 @Suite("RecordingConfig")
 struct RecordingConfigTests {

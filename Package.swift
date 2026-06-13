@@ -1,7 +1,7 @@
 // swift-tools-version: 6.0
 //
 //  Package.swift
-//  ReelKit
+//  SurfaceRecorderSDK
 //
 //  Created by Nazar Kozak on 05.06.2026.
 //
@@ -9,24 +9,24 @@
 import PackageDescription
 
 let package = Package(
-    name: "ReelKit",
+    name: "SurfaceRecorderSDK",
     platforms: [
         .iOS(.v17),
         .macOS(.v12)
     ],
     products: [
-        .library(name: "ReelKit", targets: ["ReelKit"])
+        .library(name: "SurfaceRecorderSDK", targets: ["SurfaceRecorderSDK"])
     ],
     targets: [
         .target(
-            name: "ReelKit",
+            name: "SurfaceRecorderSDK",
             swiftSettings: [
                 .swiftLanguageMode(.v6)
             ]
         ),
         .testTarget(
-            name: "ReelKitTests",
-            dependencies: ["ReelKit"]
+            name: "SurfaceRecorderSDKTests",
+            dependencies: ["SurfaceRecorderSDK"]
         )
     ]
 )

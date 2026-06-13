@@ -1,6 +1,6 @@
 //
 //  VideoWriter.swift
-//  ReelKit
+//  SurfaceRecorderSDK
 //
 //  Created by Nazar Kozak on 05.06.2026.
 //
@@ -13,7 +13,7 @@ import AVFoundation
 /// Encodes incoming pixel buffers to an MP4 file on disk.
 ///
 /// Marked `@unchecked Sendable`: all access is serialized by the owning
-/// ``ReelRecorder`` actor, so the underlying `AVAssetWriter` is never touched
+/// ``SurfaceRecorder`` actor, so the underlying `AVAssetWriter` is never touched
 /// concurrently.
 final class VideoWriter: @unchecked Sendable {
     private let writer: AVAssetWriter
@@ -26,11 +26,11 @@ final class VideoWriter: @unchecked Sendable {
 
     init(size: CGSize, config: RecordingConfig, audio: AudioMode) throws {
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("reelkit-\(UUID().uuidString).mp4")
+            .appendingPathComponent("surfacerec-\(UUID().uuidString).mp4")
         self.outputURL = url
 
         guard let writer = try? AVAssetWriter(outputURL: url, fileType: .mp4) else {
-            throw ReelError.writerSetupFailed
+            throw RecorderError.writerSetupFailed
         }
         self.writer = writer
 
@@ -57,7 +57,7 @@ final class VideoWriter: @unchecked Sendable {
             assetWriterInput: videoInput,
             sourcePixelBufferAttributes: attrs
         )
-        guard writer.canAdd(videoInput) else { throw ReelError.writerSetupFailed }
+        guard writer.canAdd(videoInput) else { throw RecorderError.writerSetupFailed }
         writer.add(videoInput)
 
         if audio != .none {
@@ -96,12 +96,12 @@ final class VideoWriter: @unchecked Sendable {
     }
 
     func finish() async throws -> URL {
-        guard started else { throw ReelError.notRecording }
+        guard started else { throw RecorderError.notRecording }
         videoInput.markAsFinished()
         audioInput?.markAsFinished()
         await writer.finishWriting()
         if writer.status == .failed {
-            throw writer.error ?? ReelError.writerSetupFailed
+            throw writer.error ?? RecorderError.writerSetupFailed
         }
         return outputURL
     }

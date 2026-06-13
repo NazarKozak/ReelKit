@@ -1,18 +1,18 @@
 //
 //  PerformanceOverlay.swift
-//  ReelKitDemo
+//  SurfaceRecorderSDKDemo
 //
 //  Created by Nazar Kozak on 05.06.2026.
 //
 //  Live load HUD — proves the capture path is cheap. Reads FPS / CPU / memory
-//  straight from ReelKit's `ReelPerformanceMonitor`.
+//  straight from SurfaceRecorderSDK's `SurfacePerformanceMonitor`.
 //
 
 import SwiftUI
-import ReelKit
+import SurfaceRecorderSDK
 
 struct PerformanceOverlay: View {
-    let perf: ReelPerformanceMonitor
+    let perf: SurfacePerformanceMonitor
     let isRecording: Bool
 
     var body: some View {

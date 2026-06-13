@@ -1,6 +1,6 @@
 //
 //  RecordingConfig.swift
-//  ReelKit
+//  SurfaceRecorderSDK
 //
 //  Created by Nazar Kozak on 05.06.2026.
 //
@@ -73,8 +73,8 @@ public enum AudioMode: Sendable {
     case arSessionAudio
 }
 
-/// Errors surfaced by ReelKit.
-public enum ReelError: Error, Sendable {
+/// Errors surfaced by SurfaceRecorderSDK.
+public enum RecorderError: Error, Sendable {
     case writerSetupFailed
     case alreadyRecording
     case notRecording
